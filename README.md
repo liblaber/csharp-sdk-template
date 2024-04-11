@@ -23,7 +23,7 @@ This repository contains the following:
 
 1. In your control repo, update the [`githubRepoName` field in the `csharp` section](https://developers.liblab.com/cli/config-file-overview-language/#githubreponame) of your liblab config file to the name of your new repo.
 
-1. Run the GitHub Action `Generate SDKs using liblab` in the Control Repo that builds the SDK, and raises a PR against this target SDK Repo.
+1. Run the GitHub Action `Generate SDKs using liblab` in the Control Repo that builds the SDK, and raises a PR against this target SDK Repo. This will be triggered automatically when you commit and push the update to the liblab config file.
 
 1. Review and merge the PR.
 
