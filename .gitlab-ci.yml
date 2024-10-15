@@ -1,0 +1,30 @@
+image: mcr.microsoft.com/dotnet/sdk:6.0
+
+variables:
+  MANIFEST_PATH: .manifest.json
+  NUGET_API_SOURCE: https://api.nuget.org/v3/index.json
+
+stages:
+  - build
+  - publish
+
+build:
+  stage: build
+  script:
+    - CSPROJ_PATH=$(jq -r '.files[] | select(endswith(".csproj") and (. | endswith("Example.csproj") | not))' $MANIFEST_PATH)
+    - SDK_VERSION=$(jq -r '.config.sdkVersion' $MANIFEST_PATH)
+    - dotnet pack $CSPROJ_PATH -o ./dist --configuration Release /p:PackageVersion=$SDK_VERSION
+  artifacts:
+    paths:
+      - ./dist/*.nupkg
+  rules:
+    - if: $CI_COMMIT_TAG
+
+publish:
+  stage: publish
+  script:
+    - dotnet nuget push ./dist/*.nupkg --api-key $NUGET_TOKEN --source $NUGET_API_SOURCE
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - build
