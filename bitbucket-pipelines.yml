@@ -1,0 +1,58 @@
+image: mcr.microsoft.com/dotnet/sdk:6.0
+
+pipelines:
+  tags:
+    '*':
+      - step:
+          name: Pre-check for Environment Variables
+          script:
+            - echo "Checking if necessary environment variables are defined..."
+            - |
+              if [ -z "$NUGET_API_SOURCE" ]; then
+                echo "Error: NUGET_API_SOURCE is not defined"
+                exit 1
+              fi
+              if [ -z "$NUGET_TOKEN" ]; then
+                echo "Error: NUGET_TOKEN is not defined"
+                exit 1
+              fi
+      - step:
+          name: Read .csproj file path and SDK version
+          caches:
+            - dotnet
+          script:
+            - apt-get update && apt-get install -y jq
+            - csproj_path=$(jq -r '.files[] | select(endswith(".csproj") and (. | endswith("Example.csproj") | not))' $MANIFEST_PATH)
+            - |
+              if [ -z "$csproj_path" ]; then
+                echo "Error: csproj_path is not defined"
+                exit 1
+              fi
+
+              echo "Project path: $csproj_path"
+              
+            - sdk_version=$(jq -r '.config.sdkVersion' $MANIFEST_PATH)
+            - |
+              if [ -z "$sdk_version" ]; then
+                echo "Error: sdk_version is not defined"
+                exit 1
+              fi
+              echo "SDK Version: $sdk_version"
+      - step:
+          name: Setup .NET and Pack NuGet Package
+          caches:
+            - dotnet
+          script:
+            - dotnet pack $csproj_path -o ./dist --configuration Release /p:PackageVersion=$sdk_version
+          needs:
+            - step: Pre-check for Environment Variables
+      - step:
+          name: Publish NuGet Package
+          script:
+            - dotnet nuget push ./dist/*.nupkg --api-key $NUGET_TOKEN --source $NUGET_API_SOURCE
+          needs:
+            - step: Setup .NET and Pack NuGet Package
+
+definitions:
+  caches:
+    dotnet: ~/.nuget/packages
